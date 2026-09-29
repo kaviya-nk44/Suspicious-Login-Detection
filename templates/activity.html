@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suspicious Login Detection - Activity Log</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="activity-container">
+        <h2>Recent Login Logs (Phase 2)</h2>
+        <table class="activity-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>IP Address</th>
+                    <th>User Agent</th>
+                    <th>Status</th>
+                    <th>Timestamp (UTC)</th>
+                    <th>Risk Level</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in records %}
+                <tr>
+                    <td>{{ log.id }}</td>
+                    <td>{{ log.username }}</td>
+                    <td>{{ log.ip_address }}</td>
+                    <td class="user-agent-cell" title="{{ log.user_agent }}">{{ log.user_agent }}</td>
+                    <td class="{{ 'status-success' if log.status == 'SUCCESS' else 'status-failed' }}">{{ log.status }}</td>
+                    <td>{{ log.timestamp }}</td>
+                    <td><span class="badge badge-pending">{{ log.risk_level }}</span></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center;">No login attempts recorded yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="/" class="nav-link">&larr; Back to Login Page</a>
+    </div>
+</body>
+</html>

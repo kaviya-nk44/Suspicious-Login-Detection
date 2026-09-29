@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suspicious Login Detection - User Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="portal-container">
+        <!-- Header -->
+        <div class="portal-header">
+            <h2>AI-Based Suspicious Login Detection System</h2>
+            <p class="portal-subtitle">User Authentication Portal</p>
+        </div>
+
+        <!-- Flash / Status Alert Message -->
+        {% if message %}
+        <div class="alert {{ 'alert-success' if status == 'SUCCESS' else 'alert-danger' }}">
+            <strong>{{ message }}</strong>
+        </div>
+        {% endif %}
+
+        <!-- Clean User Login Form -->
+        <div class="login-card">
+            <h3>User Login</h3>
+            <form action="/login" method="POST">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter username (e.g. user1 or admin)" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="btn-login">Login</button>
+            </form>
+
+            <div class="admin-link-container">
+                <a href="/admin-login" class="btn-admin-link">Security Admin Portal &rarr;</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

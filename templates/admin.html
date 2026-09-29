@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOC Dashboard - Cyber Defense Operations Center</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Chart.js CDN for Visual Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="portal-container">
+        <!-- SOC Dashboard Header -->
+        <div class="portal-header">
+            <h2>CYBER DEFENSE OPERATIONS CENTER (SOC DASHBOARD)</h2>
+            <p class="portal-subtitle">Real-Time Threat Intelligence & ML Anomaly Detection Engine</p>
+        </div>
+
+        <!-- Flashing High-Risk Alert Banner -->
+        <div id="high-risk-alert-container">
+            {% if high_risk_detected or analytics.high_risk_incidents > 0 %}
+            <div class="alert alert-highrisk-banner">
+                🚨 <strong>HIGH-RISK CYBER THREAT DETECTED!</strong> Immediate Brute-Force / Anomaly Mitigation Triggered.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Analytics Summary Cards -->
+        <div class="analytics-grid">
+            <div class="analytics-card">
+                <div class="analytics-title">Total Attempts</div>
+                <div class="analytics-value" id="val-total">{{ analytics.total_attempts }}</div>
+            </div>
+            <div class="analytics-card card-success">
+                <div class="analytics-title">Successful Logins</div>
+                <div class="analytics-value" id="val-success">{{ analytics.successful_logins }}</div>
+            </div>
+            <div class="analytics-card card-failed">
+                <div class="analytics-title">Failed Logins</div>
+                <div class="analytics-value" id="val-failed">{{ analytics.failed_logins }}</div>
+            </div>
+            <div class="analytics-card card-highrisk">
+                <div class="analytics-title">High-Risk Incidents</div>
+                <div class="analytics-value" id="val-highrisk">{{ analytics.high_risk_incidents }}</div>
+            </div>
+        </div>
+
+        <!-- Visual Analytics Charts (Chart.js) -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h4>Risk Level Distribution</h4>
+                <div class="chart-wrapper">
+                    <canvas id="riskDonutChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h4>Hourly Login Activity & Threats</h4>
+                <div class="chart-wrapper">
+                    <canvas id="hourlyBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cyber Controls & Attack Simulator Bar -->
+        <div class="cyber-controls-bar">
+            <button id="btn-simulate-attack" class="btn-simulate">⚡ Simulate Brute-Force Attack</button>
+            
+            <div class="auto-refresh-box">
+                <input type="checkbox" id="auto-refresh-toggle" class="toggle-checkbox" checked>
+                <label for="auto-refresh-toggle">Live Auto-Refresh (Every 5s)</label>
+            </div>
+        </div>
+
+        <div class="admin-dashboard-card">
+            <div class="admin-dashboard-header">
+                <h3>Real-Time Security Logs</h3>
+                <a href="/admin-logout" class="btn-logout">Logout Admin Session</a>
+            </div>
+
+            <!-- Filter Bar & Export Buttons -->
+            <div class="filter-export-bar">
+                <form action="/admin" method="GET" class="filter-form">
+                    <input type="text" name="username" placeholder="Search Username..." value="{{ filters.username or '' }}" class="filter-input">
+                    
+                    <select name="risk_level" class="filter-select">
+                        <option value="All" {{ 'selected' if filters.risk_level == 'All' or not filters.risk_level }}>Risk: All</option>
+                        <option value="Normal" {{ 'selected' if filters.risk_level == 'Normal' }}>Risk: Normal</option>
+                        <option value="Suspicious" {{ 'selected' if filters.risk_level == 'Suspicious' }}>Risk: Suspicious</option>
+                        <option value="High Risk" {{ 'selected' if filters.risk_level == 'High Risk' }}>Risk: High Risk</option>
+                    </select>
+
+                    <select name="status" class="filter-select">
+                        <option value="All" {{ 'selected' if filters.status == 'All' or not filters.status }}>Status: All</option>
+                        <option value="SUCCESS" {{ 'selected' if filters.status == 'SUCCESS' }}>Status: SUCCESS</option>
+                        <option value="FAILED" {{ 'selected' if filters.status == 'FAILED' }}>Status: FAILED</option>
+                    </select>
+
+                    <button type="submit" class="btn-filter">Apply Filters</button>
+                    <a href="/admin" class="btn-reset">Reset</a>
+                </form>
+
+                <div class="export-buttons">
+                    <a href="/admin/export?format=csv" class="btn-export">Export CSV</a>
+                    <a href="/admin/export?format=json" class="btn-export btn-export-json">Export JSON</a>
+                </div>
+            </div>
+
+            <!-- Security Logs Table -->
+            <table class="activity-table" id="logs-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>IP Address</th>
+                        <th>Status</th>
+                        <th>Timestamp (UTC)</th>
+                        <th>Risk Level</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-tbody">
+                    {% for log in records %}
+                    <tr class="{{ 'row-highrisk' if log.risk_level == 'High Risk' else ('row-suspicious' if log.risk_level == 'Suspicious' else 'row-normal') }}">
+                        <td>{{ log.id }}</td>
+                        <td>{{ log.username }}</td>
+                        <td>{{ log.ip_address }}</td>
+                        <td class="{{ 'status-success' if log.status == 'SUCCESS' else 'status-failed' }}">{{ log.status }}</td>
+                        <td>{{ log.timestamp }}</td>
+                        <td>
+                            {% if log.risk_level == 'High Risk' %}
+                            <span class="badge badge-highrisk">High Risk</span>
+                            {% elif log.risk_level == 'Suspicious' %}
+                            <span class="badge badge-suspicious">Suspicious</span>
+                            {% else %}
+                            <span class="badge badge-normal">Normal</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center;">No security logs found matching filters.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Frontend Interactive JavaScript (Chart.js, Web Audio Alert & Auto-Refresh) -->
+    <script>
+        // Initial Data passed from Jinja2
+        let initialDist = {{ risk_dist | tojson }};
+        let initialHourly = {{ hourly_data | tojson }};
+
+        // Initialize Web Audio API Synth Alert Sound
+        function playCyberAlertSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch siren
+                osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.3);
+                
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } catch (e) {
+                console.log("Audio play blocked by browser policy:", e);
+            }
+        }
+
+        // Initialize Chart 1: Donut Chart for Risk Distribution
+        const ctxDonut = document.getElementById('riskDonutChart').getContext('2d');
+        const donutChart = new Chart(ctxDonut, {
+            type: 'doughnut',
+            data: {
+                labels: ['Normal', 'Suspicious', 'High Risk'],
+                datasets: [{
+                    data: [initialDist.Normal || 0, initialDist.Suspicious || 0, initialDist['High Risk'] || 0],
+                    backgroundColor: ['#00e676', '#ffab00', '#ff1744'],
+                    borderColor: '#161b22',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#c9d1d9' } }
+                }
+            }
+        });
+
+        // Initialize Chart 2: Bar Chart for Hourly Activity
+        const ctxBar = document.getElementById('hourlyBarChart').getContext('2d');
+        const barChart = new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: initialHourly.labels,
+                datasets: [
+                    {
+                        label: 'Total Logins',
+                        data: initialHourly.total,
+                        backgroundColor: '#00f2fe'
+                    },
+                    {
+                        label: 'Failed Attempts',
+                        data: initialHourly.failed,
+                        backgroundColor: '#ff1744'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
+                    y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }
+                },
+                plugins: {
+                    legend: { labels: { color: '#c9d1d9' } }
+                }
+            }
+        });
+
+        // Fetch stats via AJAX API and update metrics, charts, banner, and table
+        function fetchDashboardData() {
+            fetch('/admin/api/stats')
+                .then(res => res.json())
+                .then(data => {
+                    // Update counters
+                    document.getElementById('val-total').innerText = data.analytics.total_attempts;
+                    document.getElementById('val-success').innerText = data.analytics.successful_logins;
+                    document.getElementById('val-failed').innerText = data.analytics.failed_logins;
+                    document.getElementById('val-highrisk').innerText = data.analytics.high_risk_incidents;
+
+                    // Update Alert Banner
+                    const alertBox = document.getElementById('high-risk-alert-container');
+                    if (data.high_risk_detected || data.analytics.high_risk_incidents > 0) {
+                        alertBox.innerHTML = `
+                            <div class="alert alert-highrisk-banner">
+                                🚨 <strong>HIGH-RISK CYBER THREAT DETECTED!</strong> Immediate Brute-Force / Anomaly Mitigation Triggered.
+                            </div>`;
+                    }
+
+                    // Update Donut Chart
+                    donutChart.data.datasets[0].data = [
+                        data.risk_distribution.Normal || 0,
+                        data.risk_distribution.Suspicious || 0,
+                        data.risk_distribution['High Risk'] || 0
+                    ];
+                    donutChart.update();
+
+                    // Update Hourly Bar Chart
+                    barChart.data.datasets[0].data = data.hourly_data.total;
+                    barChart.data.datasets[1].data = data.hourly_data.failed;
+                    barChart.update();
+
+                    // Update Table Rows
+                    const tbody = document.getElementById('logs-tbody');
+                    if (data.logs && data.logs.length > 0) {
+                        tbody.innerHTML = data.logs.map(log => {
+                            let rowClass = log.risk_level === 'High Risk' ? 'row-highrisk' : (log.risk_level === 'Suspicious' ? 'row-suspicious' : 'row-normal');
+                            let badgeClass = log.risk_level === 'High Risk' ? 'badge-highrisk' : (log.risk_level === 'Suspicious' ? 'badge-suspicious' : 'badge-normal');
+                            let statusClass = log.status === 'SUCCESS' ? 'status-success' : 'status-failed';
+                            return `
+                                <tr class="${rowClass}">
+                                    <td>${log.id}</td>
+                                    <td>${log.username}</td>
+                                    <td>${log.ip_address}</td>
+                                    <td class="${statusClass}">${log.status}</td>
+                                    <td>${log.timestamp}</td>
+                                    <td><span class="badge ${badgeClass}">${log.risk_level}</span></td>
+                                </tr>`;
+                        }).join('');
+                    }
+                })
+                .catch(err => console.error("Error updating dashboard:", err));
+        }
+
+        // Live Attack Simulator Button Event Handler
+        document.getElementById('btn-simulate-attack').addEventListener('click', function() {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerText = '⚡ Attack Simulation Active...';
+
+            playCyberAlertSound();
+
+            fetch('/api/simulate-attack', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    playCyberAlertSound();
+                    fetchDashboardData();
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.innerText = '⚡ Simulate Brute-Force Attack';
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error("Attack simulation failed:", err);
+                    btn.disabled = false;
+                    btn.innerText = '⚡ Simulate Brute-Force Attack';
+                });
+        });
+
+        // Live Auto-Refresh Timer (Every 5 Seconds)
+        setInterval(() => {
+            if (document.getElementById('auto-refresh-toggle').checked) {
+                fetchDashboardData();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
